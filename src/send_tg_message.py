@@ -1,9 +1,9 @@
 
-
+import os
 import requests
-TELEGRAM_BOT_TOKEN = ''
-TELEGRAM_CHAT_ID = ''
-
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+from logging_config import logger
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
@@ -11,7 +11,7 @@ def send_telegram_message(message):
         response = requests.post(url, json=payload)
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f"Failed to send message to Telegram: {e}")
+        logger.error(f"Failed to send message to Telegram: {e}")
 
 
 def format_signal_message(loris_tools_spread, buy_on_markets_data, sell_on_markets_data,

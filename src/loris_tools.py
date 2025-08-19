@@ -2,7 +2,7 @@ import json
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
+from logging_config import logger
 
 # Assuming the JSON content is saved in a variable called `json_content` for parsing
 # with open('loris-tools.json', 'r') as file:
@@ -65,17 +65,46 @@ def find_funding_spreads(data, LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD):
 
     return significant_spread_pairs
 
+# def loris_tools_parse(LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD):
+#     return_data = []
+#     resp = requests.get('https://loris.tools/api/funding', verify=False)
+#     resp.raise_for_status()
+#     data = resp.json()
+#     spreads = find_funding_spreads(data, LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD)
+#     for entry in spreads:
+#         spread_bps = round(float(entry['spread_bps']), 3)
+#         fund_spread = round(float(entry['fund_spread']), 3)
+#         return_data.append(
+#             {
+#                 'coin': entry['coin'],
+#                 'buy_on': entry['exchange1'],
+#                 'buy_on_rate': entry['rate1'],
+#                 'sell_on': entry['exchange2'],
+#                 'sell_on_rate': entry['rate2'],
+#                 'spread_bps': spread_bps,
+#                 'fund_spread_percentage': fund_spread
+#             }
+#         )
+#     return return_data
+
+
 def loris_tools_parse(LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD):
     return_data = []
-    resp = requests.get('https://loris.tools/api/funding', verify=False)
-    resp.raise_for_status()
-    data = resp.json()
-    spreads = find_funding_spreads(data, LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD)
-    for entry in spreads:
-        spread_bps = round(float(entry['spread_bps']), 3)
-        fund_spread = round(float(entry['fund_spread']), 3)
-        return_data.append(
-            {
+    url = "https://loris.tools/api/funding"
+
+    try:
+        resp = requests.get(url, verify=False, timeout=10)
+        resp.raise_for_status()
+
+        data = resp.json()
+
+        spreads = find_funding_spreads(data, LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD)
+
+        for entry in spreads:
+            spread_bps = round(float(entry['spread_bps']), 3)
+            fund_spread = round(float(entry['fund_spread']), 3)
+
+            return_data.append({
                 'coin': entry['coin'],
                 'buy_on': entry['exchange1'],
                 'buy_on_rate': entry['rate1'],
@@ -83,8 +112,14 @@ def loris_tools_parse(LORIS_MIN_BPS_SPREAD, LORIS_MIN_FUND_SPREAD):
                 'sell_on_rate': entry['rate2'],
                 'spread_bps': spread_bps,
                 'fund_spread_percentage': fund_spread
-            }
-        )
-    return return_data
+            })
 
-# loris_tools_parse()
+        logger.info("Successfully parsed %d spreads", len(return_data))
+        return return_data
+
+    except requests.RequestException as e:
+        logger.error("Request failed: %s", e, exc_info=True)
+    except Exception as e:
+        logger.error("Unexpected error in loris_tools_parse: %s", e, exc_info=True)
+
+    return []  # Return empty list if error

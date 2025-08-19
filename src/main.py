@@ -1,30 +1,22 @@
 
-import logging
+from logging_config import logger
 from ccxt.base.errors import BadSymbol
 from loris_tools import loris_tools_parse
 from exchange_data_ccxt import get_market_exchange_data
 from funding_time import same_funding_time_and_soon
 import time 
 from send_tg_message import format_signal_message, send_telegram_message
-SLEEP_BEFORE_RECHECK_LORIS = 50
+SLEEP_BEFORE_RECHECK_LORIS = 50 # 50
 TIME_BEFORE_FUNDING = 20 # 20
 
 
-LORIS_MIN_BPS_SPREAD_PERCENTAGE = 0.3 # 30 bps
+LORIS_MIN_BPS_SPREAD_PERCENTAGE = 0.3 # 0.3 30 bps
 
-LORIS_MIN_FUND_SPREAD = 0
-MIN_MARKET_SPREAD = -0.2
-MIN_VOLUME = 300000
+LORIS_MIN_FUND_SPREAD = 0 # 0
+MIN_MARKET_SPREAD = -0.2 # -0.2
+MIN_VOLUME = 300000 # 300000
 FINAL_FUND_SPREAD_WITH_COMMISSIONS = 0.3 #0.3
 
-# Configure logger
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='log.log',
-    filemode='a'
-)
-logger = logging.getLogger()
 
 def calculate_min_volume_24h(buy_on_volume, sell_on_volume):
 
@@ -62,72 +54,69 @@ market_map = {
 }
 
 def sort_market_data():
+    logger.info("Executing loop.")
     loris_tools_spreads = loris_tools_parse((LORIS_MIN_BPS_SPREAD_PERCENTAGE * 100), LORIS_MIN_FUND_SPREAD)
-    return_data = []
-    for loris_tools_spread in loris_tools_spreads:
-        try:
-            market_data_dict = get_market_exchange_data(loris_tools_spread)
-        except BadSymbol as e:
-            logger.warning(f"Skipping due to unknown market symbol error: {e}")
-            continue
+    if loris_tools_spreads:
+        for loris_tools_spread in loris_tools_spreads:
+            try:
+                market_data_dict = get_market_exchange_data(loris_tools_spread)
+            except BadSymbol as e:
+                logger.warning(f"Skipping due to unknown market symbol error: {e}")
+                continue
+            if market_data_dict:
+                markets_data = market_data_dict['markets_data']
 
-        markets_data = market_data_dict['markets_data']
+                buy_on_markets_data = markets_data[0]
+                maker_comission_buy_on_market = float(buy_on_markets_data['comission_maker']) * 2
+                taker_comission_buy_on_market = float(buy_on_markets_data['comission_taker']) * 2
 
-        buy_on_markets_data = markets_data[0]
-        maker_comission_buy_on_market = float(buy_on_markets_data['comission_maker']) * 2
-        taker_comission_buy_on_market = float(buy_on_markets_data['comission_taker']) * 2
+                sell_on_markets_data = markets_data[1]
+                maker_comission_sell_on_market = float(sell_on_markets_data['comission_maker']) * 2
+                taker_comission_sell_on_market = float(sell_on_markets_data['comission_taker']) * 2
 
-        sell_on_markets_data = markets_data[1]
-        maker_comission_sell_on_market = float(sell_on_markets_data['comission_maker']) * 2
-        taker_comission_sell_on_market = float(sell_on_markets_data['comission_taker']) * 2
+                maker_total_commission = maker_comission_buy_on_market + maker_comission_sell_on_market
+                taker_total_commission = taker_comission_buy_on_market + taker_comission_sell_on_market
 
-        maker_total_commission = maker_comission_buy_on_market + maker_comission_sell_on_market
-        taker_total_commission = taker_comission_buy_on_market + taker_comission_sell_on_market
+                buy_on_volume = buy_on_markets_data['volume']
+                sell_on_volume = sell_on_markets_data['volume']
 
-        buy_on_volume = buy_on_markets_data['volume']
-        sell_on_volume = sell_on_markets_data['volume']
+                exchange_market_spread = float(market_data_dict['spread_pct'])
+                fund_spread_percentage = float(loris_tools_spread['fund_spread_percentage'])
 
-        exchange_market_spread = float(market_data_dict['spread_pct'])
-        fund_spread_percentage = float(loris_tools_spread['fund_spread_percentage'])
-
-        # calculation by market
-        if compare_exchange__and_fund_and_comis_spread(exchange_market_spread, fund_spread_percentage, taker_total_commission) and calculate_min_volume_24h(buy_on_volume, sell_on_volume) and same_funding_time_and_soon(markets_data, TIME_BEFORE_FUNDING):
-            logger.info("==============================================================================================================================")
-            logger.info("\nLoris data:")
-            logger.info(
-                f"{loris_tools_spread['coin']}, buy_on {loris_tools_spread['buy_on']}, buy_on_rate {loris_tools_spread['buy_on_rate']}, "
-                f"sell_on {loris_tools_spread['sell_on']}, sell_on_rate {loris_tools_spread['sell_on_rate']}, "
-                f"spread_bps {loris_tools_spread['spread_bps']}, fund_spread_percentage {fund_spread_percentage}%"
-            )
-            logger.info("\nMarkets data:")
-            logger.info(
-                f"Buy ON - {buy_on_markets_data['market_name']}, price: {buy_on_markets_data['price']}, fund_time_human: {buy_on_markets_data['fund_time_human']}, "
-                f"volume: {buy_on_volume}, commisions: maker {maker_comission_buy_on_market} taker {taker_comission_buy_on_market}\n"
-                f"Sell ON - {sell_on_markets_data['market_name']}, price: {sell_on_markets_data['price']}, fund_time_human: {sell_on_markets_data['fund_time_human']}, "
-                f"volume: {sell_on_volume}, commisions: maker {maker_comission_sell_on_market} taker {taker_comission_sell_on_market}\n"
-                f"Exchange spread in percentage: {exchange_market_spread}%\n"
-            )
-            logger.info(f"Funding time matches and is within {TIME_BEFORE_FUNDING} minutes.")
-            profit = get_profit(exchange_market_spread, fund_spread_percentage, taker_total_commission)
-            logger.info(f"Profit: {profit}%")
-            logger.info(f"UAinvest link: https://uainvest.com.ua/arbitrage/{loris_tools_spread['coin'].lower()}-{market_map[sell_on_markets_data['market_name']]}-swap-{market_map[buy_on_markets_data['market_name']]}-swap")
-            logger.info("==============================================================================================================================")
-            message = format_signal_message(
-                    loris_tools_spread,
-                    buy_on_markets_data,
-                    sell_on_markets_data,
-                    fund_spread_percentage,
-                    exchange_market_spread,
-                    maker_comission_buy_on_market,
-                    taker_comission_buy_on_market,
-                    maker_comission_sell_on_market,
-                    taker_comission_sell_on_market,
-                    TIME_BEFORE_FUNDING,
-                    market_map,
-                    profit
-                )
-            send_telegram_message(message)
-    logger.info("\nExecuted part.\n")
+                # calculation by market
+                if compare_exchange__and_fund_and_comis_spread(exchange_market_spread, fund_spread_percentage, taker_total_commission) and calculate_min_volume_24h(buy_on_volume, sell_on_volume) and same_funding_time_and_soon(markets_data, TIME_BEFORE_FUNDING):
+                    profit = get_profit(exchange_market_spread, fund_spread_percentage, taker_total_commission)
+                    echo_message = f"""
+                    ✅Loris data: {loris_tools_spread['coin']}, buy_on {loris_tools_spread['buy_on']}, buy_on_rate {loris_tools_spread['buy_on_rate']},
+                    sell_on {loris_tools_spread['sell_on']}, sell_on_rate {loris_tools_spread['sell_on_rate']}, 
+                    spread_bps {loris_tools_spread['spread_bps']}
+                    \nMarkets data: Buy ON - {buy_on_markets_data['market_name']}, price: {buy_on_markets_data['price']}, fund_time_human: {buy_on_markets_data['fund_time_human']}, volume: {buy_on_volume}, commisions: maker {maker_comission_buy_on_market} taker {taker_comission_buy_on_market} 
+                    Sell ON - {sell_on_markets_data['market_name']}, price: {sell_on_markets_data['price']}, fund_time_human: {sell_on_markets_data['fund_time_human']}, volume: {sell_on_volume}, commisions: maker {maker_comission_sell_on_market} taker {taker_comission_sell_on_market}
+                    \nExchange spread in percentage: {exchange_market_spread}%, fund_spread_percentage {fund_spread_percentage}%, Profit: {profit}%
+                    """
+                    logger.info(echo_message)
+                    logger.info(f"Funding time matches and is within {TIME_BEFORE_FUNDING} minutes.")
+                    logger.info(f"UAinvest link: https://uainvest.com.ua/arbitrage/{loris_tools_spread['coin'].lower()}-{market_map[sell_on_markets_data['market_name']]}-swap-{market_map[buy_on_markets_data['market_name']]}-swap\n")
+                    message = format_signal_message(
+                            loris_tools_spread,
+                            buy_on_markets_data,
+                            sell_on_markets_data,
+                            fund_spread_percentage,
+                            exchange_market_spread,
+                            maker_comission_buy_on_market,
+                            taker_comission_buy_on_market,
+                            maker_comission_sell_on_market,
+                            taker_comission_sell_on_market,
+                            TIME_BEFORE_FUNDING,
+                            market_map,
+                            profit
+                        )
+                    send_telegram_message(message)
+                else:
+                    logger.info("Data has been received but not corresponding.")
+            else:
+               logger.error("Something wrong in market_data_dict.") 
+    logger.info("Loop executed.")
       
 while True:
     sort_market_data()

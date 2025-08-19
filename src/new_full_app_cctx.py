@@ -3,7 +3,7 @@ import ccxt
 from datetime import datetime, timezone
 import pytz
 import requests
-
+from logging_config import logger
 KYIV_TZ = pytz.timezone("Europe/Kyiv")
 
 EXCHANGE_CLASSES = {
@@ -27,7 +27,11 @@ class BaseFuturesExchange:
     def __init__(self, coin):
         self.coin = coin.upper()
         self.exchange = None
-        self.load_exchange()
+        try:
+            self.load_exchange()
+        except Exception as e:
+            logger.error(f"[{self.coin}] Failed to load exchange: {e}", exc_info=True)
+            self.exchange = None
         self.symbol = self.format_symbol()
 
     def load_exchange(self):
@@ -39,60 +43,70 @@ class BaseFuturesExchange:
         return f"{self.coin}/USDT:USDT"
 
     def get_price(self):
-        ticker = self.exchange.fetch_ticker(self.symbol)
-        return ticker['last']
+        try:
+            ticker = self.exchange.fetch_ticker(self.symbol)
+            return ticker.get('last')
+        except Exception as e:
+            logger.error(f"[{self.exchange.id}] get_price error for {self.symbol}: {e}", exc_info=True)
+            return None
 
     def get_funding_rate(self):
-        info = self.exchange.fetch_funding_rate(self.symbol)
-        ex_id = self.exchange.id
-        # Decide fundingTimestamp key
-        key = FUNDING_TIME_KEYS.get(ex_id, 'nextFundingTime')
+        try:
+            info = self.exchange.fetch_funding_rate(self.symbol)
+            ex_id = self.exchange.id
+            key = FUNDING_TIME_KEYS.get(ex_id, 'nextFundingTime')
 
-        if ex_id == 'gate':
-            next_funding_time = info.get(key)
-            if next_funding_time is not None:
-                next_funding_time = int(next_funding_time)
-        elif ex_id == 'mexc' or ex_id == 'kucoinfutures':
-            next_funding_time = int(info['info'].get(key))
-        else:
-            next_funding_time = int(info['info'].get(key))
+            if ex_id == 'gate':
+                next_funding_time = info.get(key)
+                if next_funding_time is not None:
+                    next_funding_time = int(next_funding_time)
+            elif ex_id in ('mexc', 'kucoinfutures', 'okx'):
+                next_funding_time = int(info['info'].get(key))
+            else:
+                next_funding_time = int(info['info'].get(key))
 
-        funding_rate = float(info.get('fundingRate', 0)) * 100
-        return {"funding_rate": funding_rate, "next_funding_time": next_funding_time}
+            funding_rate = float(info.get('fundingRate', 0)) * 100
+            return {"funding_rate": funding_rate, "next_funding_time": next_funding_time}
+        except Exception as e:
+            logger.error(f"[{self.exchange.id}] get_funding_rate error for {self.symbol}: {e}", exc_info=True)
+            return None
 
     def get_volume(self):
-        if self.exchange.id == "kucoinfutures": # spot volume, kucoin don't share futures volume
-            # KuCoin uses different symbol format and API for volume
-            symbol_k = self.symbol.replace('/', '-').replace(':USDT', '')
-            url = f"https://api.kucoin.com/api/v1/market/stats?symbol={symbol_k}"
-            resp = requests.get(url)
-            if resp.ok:
-                try:
-                    vol_value = float(resp.json()['data']['volValue'])
-                except (TypeError, ValueError):
-                    print(f"Kucoin cant return volume value for {symbol_k}")
-                    vol_value = None
-                return vol_value
-            print(f"Kucoin response isn't ok: {resp}")
+        try:
+            if self.exchange.id == "kucoinfutures":
+                symbol_k = self.symbol.replace('/', '-').replace(':USDT', '')
+                url = f"https://api.kucoin.com/api/v1/market/stats?symbol={symbol_k}"
+                resp = requests.get(url)
+                if resp.ok:
+                    try:
+                        return float(resp.json()['data']['volValue'])
+                    except (TypeError, ValueError):
+                        logger.warn(f"KuCoin can't parse volume value for {symbol_k}")
+                        return None
+                logger.warning(f"KuCoin response not OK: {resp}")
+                return None
+            elif self.exchange.id == "okx":
+                ticker = self.exchange.fetch_ticker(self.symbol)
+                return float(ticker['info']['volCcy24h']) * float(ticker['last'])
+            else:
+                ticker = self.exchange.fetch_ticker(self.symbol)
+                return ticker.get('quoteVolume')
+        except Exception as e:
+            logger.error(f"[{self.exchange.id}] get_volume error for {self.symbol}: {e}", exc_info=True)
             return None
-        elif self.exchange.id == "okx":
-            ticker = self.exchange.fetch_ticker(self.symbol)
-            volume_usd = float(ticker['info']['volCcy24h']) * float(ticker['last'])  
-            return volume_usd
-        else:
-            ticker = self.exchange.fetch_ticker(self.symbol)
-            import json
-            # print(json.dumps(ticker, indent=4))
-            return ticker.get('quoteVolume')
 
     def get_commission(self):
-        if self.exchange.id == "gate":
-            return {"maker": 0.02, "taker": 0.05}
-        market = self.exchange.market(self.symbol)
-        return {
-            "maker": market.get('maker', 0) * 100,
-            "taker": market.get('taker', 0) * 100,
-        }
+        try:
+            if self.exchange.id == "gate":
+                return {"maker": 0.02, "taker": 0.05}
+            market = self.exchange.market(self.symbol)
+            return {
+                "maker": market.get('maker', 0) * 100,
+                "taker": market.get('taker', 0) * 100,
+            }
+        except Exception as e:
+            logger.error(f"[{self.exchange.id}] get_commission error for {self.symbol}: {e}", exc_info=True)
+            return None
 
 
 class BinanceFutures(BaseFuturesExchange):

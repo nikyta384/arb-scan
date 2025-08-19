@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-
+from logging_config import logger
 
 def same_funding_time_and_soon(markets_data, time_before_funding):
     """
