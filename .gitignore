@@ -2,3 +2,4 @@ log.log
 .venv
 unused.py
 src/__pycache__/
+logs/*

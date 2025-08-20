@@ -8,7 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 
-LOG_FILE = "log.log"
+LOG_FILE = "logs/log.log"
 
 
 # Configure logging
