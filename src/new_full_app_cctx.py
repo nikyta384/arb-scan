@@ -4,6 +4,9 @@ from datetime import datetime, timezone
 import pytz
 import requests
 from logging_config import logger
+import time
+import ccxt.base.errors
+
 KYIV_TZ = pytz.timezone("Europe/Kyiv")
 
 EXCHANGE_CLASSES = {
@@ -27,12 +30,25 @@ class BaseFuturesExchange:
     def __init__(self, coin):
         self.coin = coin.upper()
         self.exchange = None
-        try:
-            self.load_exchange()
-        except Exception as e:
-            logger.error(f"[{self.coin}] Failed to load exchange: {e}", exc_info=True)
+        self.symbol = None
+        retries = 3
+        while retries > 0:
+            try:
+                self.load_exchange()
+                self.symbol = self.format_symbol()
+                break  # Exit loop if successful
+            except (TimeoutError, ccxt.base.errors.RequestTimeout) as e:
+                logger.error(f"[{self.coin}] Timeout error loading exchange: {e}. Retries left: {retries-1}", exc_info=True)
+                retries -= 1
+                if retries > 0:
+                    time.sleep(20)  # Wait for 20 seconds before retrying
+            except Exception as e:
+                logger.error(f"[{self.coin}] Failed to load exchange: {e}", exc_info=True)
+                break  # Exit loop for any other error
+        else:
+            # If we exhausted all retries, set the exchange to None
+            logger.error(f"[{self.coin}] Exhausted retries to load exchange. Setting exchange to None.")
             self.exchange = None
-        self.symbol = self.format_symbol()
 
     def load_exchange(self):
         """To be implemented in subclasses"""
