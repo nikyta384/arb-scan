@@ -6,6 +6,7 @@ from exchange_data_ccxt import get_market_exchange_data
 from funding_time import same_funding_time_and_soon
 import time 
 from send_tg_message import format_signal_message, send_telegram_message
+from vars import market_map
 SLEEP_BEFORE_RECHECK_LORIS = 50 # 50
 TIME_BEFORE_FUNDING = 20 # 20
 
@@ -44,14 +45,7 @@ def get_profit(spread, fund_spread, commissions):
     profit = (spread + fund_spread) - commissions
     return profit
 
-market_map = {
-    'binance_1_perp': 'binance',
-    'bybit_1_perp': 'bybit',
-    'gateio_1_perp': 'gate',
-    'kucoin_1_perp': 'kucoin',
-    'mexc_1_perp': 'mexc',
-    'okx_1_perp': 'okx',
-}
+
 
 def sort_market_data():
     logger.info("Executing loop.")

@@ -1,12 +1,15 @@
 version: '3.8' 
 
 services:
-  my_app:
+  arb:
     build:
       context: .
       dockerfile: Dockerfile
     command: python3 src/main.py  
     restart: always  
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
     volumes:
       - ./logs/:/app/logs
 
