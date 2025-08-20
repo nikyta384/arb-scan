@@ -10,8 +10,8 @@ WORKDIR /app
 RUN pip install --no-cache-dir requests ccxt pytz
 
 # Copy the rest of your application code into the container
-COPY logs .
-COPY src .
+COPY logs logs
+COPY src src
 
 # Command to run your application
 CMD ["python3", "src/main.py"]
