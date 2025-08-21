@@ -1,0 +1,62 @@
+import redis
+import json
+import hashlib
+from logging_config import logger
+from vars import REDIS_HOST, REDIS_CACHE_TTL
+# Connect to Redis (adjust host/port if needed)
+# Retry logic for connecting to Redis
+MAX_RETRIES = 3
+RETRY_DELAY = 30  # seconds
+
+def connect_to_redis(host, port, db):
+    retries = 0
+    while retries < MAX_RETRIES:
+        try:
+            client = redis.Redis(host=host, port=port, db=db)
+            # Ping the server to ensure the connection is established
+            client.ping()
+            logger.info("Connected to Redis")
+            return client
+        except redis.ConnectionError as e:
+            retries += 1
+            logger.warn(f"Failed to connect to Redis (attempt {retries}/{MAX_RETRIES}): {e}")
+            if retries < MAX_RETRIES:
+                logger.info(f"Retrying in {RETRY_DELAY} seconds...")
+                time.sleep(RETRY_DELAY)
+    raise Exception("Could not connect to Redis after several attempts")
+
+# Connect to Redis with retry logic
+redis_client = connect_to_redis(REDIS_HOST, 6379, 0)
+
+
+def _make_cache_key(loris_tools_spread: dict) -> str:
+    """
+    Create a unique Redis key for a loris_tools_spread entry.
+    We hash coin + buy_on + sell_on so the key is stable but short.
+    """
+    key_str = f"{loris_tools_spread['coin']}_{loris_tools_spread['buy_on']}_{loris_tools_spread['sell_on']}"
+    return "markets_data:" + hashlib.md5(key_str.encode()).hexdigest()
+
+
+def save_markets_data(loris_tools_spread: dict, markets_data: dict) -> None:
+    """Save markets_data for a given loris_tools_spread with TTL."""
+    try:
+        key = _make_cache_key(loris_tools_spread)
+        redis_client.setex(key, REDIS_CACHE_TTL, json.dumps(markets_data))
+        logger.info(f"Saved markets_data to Redis for {loris_tools_spread['coin']}")
+    except Exception as e:
+        logger.error(f"Failed to save to Redis: {e}")
+
+
+def get_markets_data(loris_tools_spread: dict):
+    """Retrieve cached markets_data if available, else None."""
+    try:
+        key = _make_cache_key(loris_tools_spread)
+        data = redis_client.get(key)
+        if data:
+            logger.info(f"Using cached markets_data for {loris_tools_spread['coin']}")
+            return True
+            # return json.loads(data)
+    except Exception as e:
+        logger.warn(f"Failed to read from Redis: {e}")
+    return None

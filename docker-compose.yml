@@ -10,11 +10,18 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - REDIS_HOST=redis
     volumes:
       - ./logs/:/app/logs
 
 
-# Optional Service, Delete It If Not Required
-# setup: 
-#   image: busybox
-#   command: ['sh', '-c', 'echo "Setup tasks if necessary, like DB migrations" > /dev/null']
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
