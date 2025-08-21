@@ -5,7 +5,7 @@ import pytz
 import requests
 from logging_config import logger
 import time
-import ccxt.base.errors
+from ccxt.base.errors import NetworkError, RequestTimeout
 
 KYIV_TZ = pytz.timezone("Europe/Kyiv")
 
@@ -37,7 +37,7 @@ class BaseFuturesExchange:
                 self.load_exchange()
                 self.symbol = self.format_symbol()
                 break  # Exit loop if successful
-            except (TimeoutError, ccxt.base.errors.RequestTimeout) as e:
+            except (TimeoutError, NetworkError, RequestTimeout) as e:
                 logger.error(f"[{self.coin}] Timeout error loading exchange: {e}. Retries left: {retries-1}", exc_info=True)
                 retries -= 1
                 if retries > 0:
