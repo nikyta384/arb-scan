@@ -83,7 +83,7 @@ def get_redis_data():
                 decoded_key = key.decode('utf-8')  # Converts bytes to string
                 markets_data = json.loads(data)
                 all_data[decoded_key] = markets_data
-                for k, v in data.items():
+                for k, v in markets_data.items():
                     if  type(v) is list:
                         coin = v[0]['symbol']
                         ex1 = market_map[v[0]['market_name']]
@@ -92,4 +92,4 @@ def get_redis_data():
         return all_data, titles
     except Exception as e:
         logger.warning(f"Failed to read from Redis: {e}")
-        return {}
+        return {}, []
