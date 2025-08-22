@@ -66,3 +66,26 @@ def check_data_in_redis(loris_tools_spread: dict) -> bool:
     except Exception as e:
         logger.warning(f"Failed to read from Redis: {e}")
     return False
+
+
+def get_redis_data():
+    """Retrieve all entries from Redis and return as JSON."""
+    redis_client = get_redis_client()
+    try:
+        # Get all keys from Redis
+        all_keys = redis_client.keys()
+        all_decoded_keys = []
+        all_data = {}
+        for key in all_keys:
+            data = redis_client.get(key)
+            if data:
+                # Decode key and parse the data
+                decoded_key = key.decode('utf-8')  # Converts bytes to string
+                markets_data = json.loads(data)
+                all_data[decoded_key] = markets_data
+                all_decoded_keys.append(decoded_key)
+        
+        return all_data, all_decoded_keys
+    except Exception as e:
+        logger.warning(f"Failed to read from Redis: {e}")
+        return {}
