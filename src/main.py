@@ -9,7 +9,7 @@ import redis
 import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update  # Updated import
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from redis_cache import get_redis_data, decode_cache_key
+from redis_cache import get_redis_data
 from vars import TELEGRAM_BOT_TOKEN, SLEEP_BEFORE_RECHECK_LORIS
 from ai_analysis import ask_ai_for_analysis
 
@@ -53,18 +53,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "spreads":
-        spreads, keys = get_active_spreads()
-        if spreads and keys:
+        spreads, _ = get_redis_data()
+        if spreads:
             await query.edit_message_text(text=f"Active spreads:\n{spreads}")
         else:
             await query.edit_message_text(text=f"No current spreads")
-
+            
     elif query.data == "analysis":
-        _, keys = get_active_spreads()
-        
-        if keys:
+        spreads, _ = get_redis_data()
+        if spreads:
             # show user a list of keys to pick from
-            keyboard = [[InlineKeyboardButton(key, callback_data=f"analysis_{key}")] for key in keys]
+            keyboard = [[InlineKeyboardButton(key, callback_data=f"analysis_{key}")] for key, value in spreads.items()]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(
                 text="Choose a pair for analysis:",
@@ -80,24 +79,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=f"AI Analysis for {coin} ({buy_on} → {sell_on}):\n{analysis}")
 
 
-
-def get_active_spreads():
-    """Fetch all cached spreads from Redis and return formatted JSON for display."""
-    # Fetch all data from Redis
-    spreads_data, keys = get_redis_data()
-    decoded_keys = []
-    for k in keys:
-        d_key = decode_cache_key(k)
-        decoded_keys.append(d_key)
-    # Format JSON for readability
-    formatted_spreads = []
-    for key, data in spreads_data.items():
-        # Assuming each data entry is a dictionary and you want a specific format
-        spread_info = f"{key}\n{json.dumps(data, indent=2)}"
-        formatted_spreads.append(spread_info)
-    
-    # Join all formatted spreads into a single string
-    return "\n\n".join(formatted_spreads), decoded_keys
 
 
 
