@@ -7,8 +7,7 @@ import threading
 import time
 import redis
 import json
-from telegram import  InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.update import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update  # Updated import
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from redis_cache import get_redis_data
 from vars import TELEGRAM_BOT_TOKEN, SLEEP_BEFORE_RECHECK_LORIS
