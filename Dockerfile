@@ -1,5 +1,5 @@
 # Use the official Python image from the Docker Hub
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -7,7 +7,7 @@ WORKDIR /app
 # Copy the requirements file into the container
 
 # Install any dependencies specified in requirements.txt
-RUN pip install --no-cache-dir requests ccxt pytz redis flask python-telegram-bot xai-sdk
+RUN pip install requests ccxt pytz redis flask python-telegram-bot xai-sdk
 
 # Copy the rest of your application code into the container
 COPY logs logs
