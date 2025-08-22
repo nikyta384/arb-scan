@@ -48,7 +48,7 @@ def save_markets_data(loris_tools_spread: dict, markets_data: dict) -> bool:
         logger.info(f"Saved markets_data to Redis for {loris_tools_spread['coin']}")
         return True
     except Exception as e:
-        logger.error(f"Failed to save to Redis: {e}")
+        logger.error(f"Failed to save to Redis: {e} {key} {markets_data}")
         return False
 
 def check_data_in_redis(loris_tools_spread: dict) -> bool:
