@@ -7,7 +7,7 @@ from funding_time import same_funding_time_and_soon
 import time 
 from send_tg_message import format_signal_message, send_telegram_message
 from vars import market_map, SLEEP_BEFORE_RECHECK_LORIS, TIME_BEFORE_FUNDING, LORIS_MIN_BPS_SPREAD_PERCENTAGE, LORIS_MIN_FUND_SPREAD, MIN_MARKET_SPREAD, MIN_VOLUME, FINAL_FUND_SPREAD_WITH_COMMISSIONS
-from redis_cache import get_markets_data, save_markets_data
+from redis_cache import save_markets_data, check_data_in_redis
 
 
 def calculate_min_volume_24h(buy_on_volume, sell_on_volume):
@@ -37,15 +37,6 @@ def get_profit(spread, fund_spread, commissions):
     return profit
 
 
-def in_redis(loris_tools_spread):
-    """
-    save to redis in case of good spread 
-    """
-    market_data_dict = get_markets_data(loris_tools_spread)
-    if market_data_dict:
-        return False # means that it is already in redis
-    else:
-        return True # means that it is not in redis
 
 
 
@@ -55,7 +46,8 @@ def sort_market_data():
     loris_tools_spreads = loris_tools_parse((LORIS_MIN_BPS_SPREAD_PERCENTAGE * 100), LORIS_MIN_FUND_SPREAD)
     if loris_tools_spreads:
         for loris_tools_spread in loris_tools_spreads:
-            if not in_redis(loris_tools_spread):
+            data_in_redis = check_data_in_redis(loris_tools_spread)
+            if not data_in_redis:
                 try:
                     market_data_dict = get_market_exchange_data(loris_tools_spread)
                 except BadSymbol as e:
@@ -89,14 +81,17 @@ def sort_market_data():
                         ✅Loris data: {loris_tools_spread['coin']}, buy_on {loris_tools_spread['buy_on']}, buy_on_rate {loris_tools_spread['buy_on_rate']},
                         sell_on {loris_tools_spread['sell_on']}, sell_on_rate {loris_tools_spread['sell_on_rate']}, 
                         spread_bps {loris_tools_spread['spread_bps']}
-                        \nMarkets data: Buy ON - {buy_on_markets_data['market_name']}, price: {buy_on_markets_data['price']}, fund_time_human: {buy_on_markets_data['fund_time_human']}, volume: {buy_on_volume}, commisions: maker {maker_comission_buy_on_market} taker {taker_comission_buy_on_market} 
+                        Markets data: Buy ON - {buy_on_markets_data['market_name']}, price: {buy_on_markets_data['price']}, fund_time_human: {buy_on_markets_data['fund_time_human']}, volume: {buy_on_volume}, commisions: maker {maker_comission_buy_on_market} taker {taker_comission_buy_on_market} 
                         Sell ON - {sell_on_markets_data['market_name']}, price: {sell_on_markets_data['price']}, fund_time_human: {sell_on_markets_data['fund_time_human']}, volume: {sell_on_volume}, commisions: maker {maker_comission_sell_on_market} taker {taker_comission_sell_on_market}
-                        \nExchange spread in percentage: {exchange_market_spread}%, fund_spread_percentage {fund_spread_percentage}%, Profit: {profit}%
+                        Exchange spread in percentage: {exchange_market_spread}%, fund_spread_percentage {fund_spread_percentage}%, Profit: {profit}%
                         """
                         logger.info(echo_message)
                         logger.info(f"Funding time matches and is within {TIME_BEFORE_FUNDING} minutes.")
                         logger.info(f"UAinvest link: https://uainvest.com.ua/arbitrage/{loris_tools_spread['coin'].lower()}-{market_map[sell_on_markets_data['market_name']]}-swap-{market_map[buy_on_markets_data['market_name']]}-swap\n")
-                        save_markets_data(loris_tools_spread, market_data_dict)
+                        redis_saved = save_markets_data(loris_tools_spread, market_data_dict)
+                        if not redis_saved:
+                            logger.error("Something wrong with Redis.")
+
                         message = format_signal_message(
                                 loris_tools_spread,
                                 buy_on_markets_data,
