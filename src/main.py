@@ -54,8 +54,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "spreads":
         spreads, keys = get_active_spreads()
-        await query.edit_message_text(text=f"Active spreads:\n{spreads}")
-
+        if spreads and keys:
+            await query.edit_message_text(text=f"Active spreads:\n{spreads}")
+        else:
+            await query.edit_message_text(text=f"No current spreads")
+            
     elif query.data == "analysis":
         _, keys = get_active_spreads()
         if keys:
