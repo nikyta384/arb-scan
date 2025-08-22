@@ -1,12 +1,3 @@
-# from monitor_spreads import sort_market_data
-# import time
-# from vars import SLEEP_BEFORE_RECHECK_LORIS
-
-
-# while True:
-#     sort_market_data()
-#     time.sleep(SLEEP_BEFORE_RECHECK_LORIS) 
-
 
 
 ########
@@ -18,14 +9,7 @@ import redis
 import json
 from telegram import  InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.update import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from redis_cache import get_redis_data
 from vars import TELEGRAM_BOT_TOKEN, SLEEP_BEFORE_RECHECK_LORIS
 from ai_analysis import ask_ai_for_analysis
