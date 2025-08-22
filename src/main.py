@@ -106,9 +106,9 @@ def start_telegram_bot():
 if __name__ == "__main__":
     # Background worker for loris
     threading.Thread(target=spread_monitor, daemon=True).start()
+    
+    # Start Flask app in a separate thread
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=5000), daemon=True).start()
 
-    # Telegram bot in a separate thread
-    threading.Thread(target=start_telegram_bot, daemon=True).start()
-
-    # Start Flask app
-    app.run(host="0.0.0.0", port=5000)
+    # Run the Telegram bot in the main thread
+    start_telegram_bot()
