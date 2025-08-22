@@ -7,7 +7,7 @@ WORKDIR /app
 # Copy the requirements file into the container
 
 # Install any dependencies specified in requirements.txt
-RUN pip install --no-cache-dir requests ccxt pytz redis flask python-telegram-bot xai_sdk
+RUN pip install --no-cache-dir requests ccxt pytz redis flask python-telegram-bot xai-sdk
 
 # Copy the rest of your application code into the container
 COPY logs logs
