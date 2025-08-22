@@ -60,10 +60,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=f"No current spreads")
             
     elif query.data == "analysis":
-        spreads, _ = get_redis_data()
-        if spreads:
+        _, titles = get_redis_data()
+        if titles:
             # show user a list of keys to pick from
-            keyboard = [[InlineKeyboardButton(key, callback_data=f"analysis_{key}")] for key, value in spreads.items()]
+            keyboard = [[InlineKeyboardButton(key, callback_data=f"analysis_{key}")] for key in titles]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(
                 text="Choose a pair for analysis:",
