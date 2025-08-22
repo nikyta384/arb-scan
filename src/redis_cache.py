@@ -44,7 +44,7 @@ def save_markets_data(loris_tools_spread: dict, markets_data: dict) -> bool:
     redis_client = get_redis_client()
     try:
         key = _make_cache_key(loris_tools_spread)
-        redis_client.setex(key, REDIS_CACHE_TTL, json.dumps(markets_data))
+        redis_client.setex(key, REDIS_CACHE_TTL, markets_data)
         logger.info(f"Saved markets_data to Redis for {loris_tools_spread['coin']}")
         return True
     except Exception as e:
