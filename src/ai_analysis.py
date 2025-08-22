@@ -16,6 +16,7 @@ def get_date_range():
     # Return the dates
     return from_date, to_date
 def ask_ai_for_analysis(coin_name, ex1, ex2 ):
+    logger.info(f"Asking for AI analysis for {coin_name} on {ex1} and {ex2}.")
     from_date, to_date = get_date_range()
 
 

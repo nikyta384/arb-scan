@@ -78,16 +78,10 @@ def sort_market_data():
                     if compare_exchange__and_fund_and_comis_spread(exchange_market_spread, fund_spread_percentage, taker_total_commission) and calculate_min_volume_24h(buy_on_volume, sell_on_volume) and same_funding_time_and_soon(markets_data, TIME_BEFORE_FUNDING):
                         profit = get_profit(exchange_market_spread, fund_spread_percentage, taker_total_commission)
                         echo_message = f"""
-                        ✅Loris data: {loris_tools_spread['coin']}, buy_on {loris_tools_spread['buy_on']}, buy_on_rate {loris_tools_spread['buy_on_rate']},
-                        sell_on {loris_tools_spread['sell_on']}, sell_on_rate {loris_tools_spread['sell_on_rate']}, 
-                        spread_bps {loris_tools_spread['spread_bps']}
-                        Markets data: Buy ON - {buy_on_markets_data['market_name']}, price: {buy_on_markets_data['price']}, fund_time_human: {buy_on_markets_data['fund_time_human']}, volume: {buy_on_volume}, commisions: maker {maker_comission_buy_on_market} taker {taker_comission_buy_on_market} 
-                        Sell ON - {sell_on_markets_data['market_name']}, price: {sell_on_markets_data['price']}, fund_time_human: {sell_on_markets_data['fund_time_human']}, volume: {sell_on_volume}, commisions: maker {maker_comission_sell_on_market} taker {taker_comission_sell_on_market}
-                        Exchange spread in percentage: {exchange_market_spread}%, fund_spread_percentage {fund_spread_percentage}%, Profit: {profit}%
+                        ✅Loris data: {loris_tools_spread['coin']}, buy_on {loris_tools_spread['buy_on']}, buy_on_rate {loris_tools_spread['buy_on_rate']}, sell_on {loris_tools_spread['sell_on']}, sell_on_rate {loris_tools_spread['sell_on_rate']}, spread_bps {loris_tools_spread['spread_bps']}; Markets data: Buy ON - {buy_on_markets_data['market_name']}, price: {buy_on_markets_data['price']}, fund_time_human: {buy_on_markets_data['fund_time_human']}, volume: {buy_on_volume}, commisions: maker {maker_comission_buy_on_market} taker {taker_comission_buy_on_market} Sell ON - {sell_on_markets_data['market_name']}, price: {sell_on_markets_data['price']}, fund_time_human: {sell_on_markets_data['fund_time_human']}, volume: {sell_on_volume}, commisions: maker {maker_comission_sell_on_market} taker {taker_comission_sell_on_market} Exchange spread in percentage: {exchange_market_spread}%, fund_spread_percentage {fund_spread_percentage}%, Profit: {profit}%
                         """
                         logger.info(echo_message)
                         logger.info(f"Funding time matches and is within {TIME_BEFORE_FUNDING} minutes.")
-                        logger.info(f"UAinvest link: https://uainvest.com.ua/arbitrage/{loris_tools_spread['coin'].lower()}-{market_map[sell_on_markets_data['market_name']]}-swap-{market_map[buy_on_markets_data['market_name']]}-swap\n")
                         redis_saved = save_markets_data(loris_tools_spread, market_data_dict)
                         if not redis_saved:
                             logger.error("Something wrong with Redis.")
