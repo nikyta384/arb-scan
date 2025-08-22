@@ -37,14 +37,14 @@ def connect_to_redis(host, port, db):
 
 def _make_cache_key(loris_tools_spread: dict) -> str:
     key_str = f"{loris_tools_spread['coin']}_{loris_tools_spread['buy_on']}_{loris_tools_spread['sell_on']}"
-    return "markets_data:" + hashlib.md5(key_str.encode()).hexdigest()
+    return hashlib.md5(key_str.encode()).hexdigest()
 
 def save_markets_data(loris_tools_spread: dict, markets_data: dict) -> bool:
     """Save markets_data for a given loris_tools_spread with TTL."""
     redis_client = get_redis_client()
     try:
         key = _make_cache_key(loris_tools_spread)
-        redis_client.setex(key, REDIS_CACHE_TTL, markets_data)
+        redis_client.setex(key, REDIS_CACHE_TTL, json.dumps(markets_data, default=str))
         logger.info(f"Saved markets_data to Redis for {loris_tools_spread['coin']}")
         return True
     except Exception as e:
